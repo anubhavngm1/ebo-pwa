@@ -273,13 +273,39 @@ public class MainActivity extends AppCompatActivity {
         String path = uri.getPath() == null ? "/" : uri.getPath();
         String query = uri.getEncodedQuery() == null ? "" : ("?" + uri.getEncodedQuery());
         String fragment = uri.getEncodedFragment() == null ? "" : ("#" + uri.getEncodedFragment());
+
+        // Website hotel stay → open inside PWA hotel detail
+        if (path.contains("hotel-detail") || path.contains("hotel.php")) {
+            String id = uri.getQueryParameter("id");
+            if (id == null || id.isEmpty()) id = uri.getQueryParameter("hotel_id");
+            if (id != null && !id.isEmpty()) {
+                return "https://www.ebostay.com/pwa/?hotel_id=" + Uri.encode(id);
+            }
+            return "https://www.ebostay.com/pwa/?page=hotels";
+        }
+        // Package / activity pages on website
+        if (path.contains("package")) {
+            String slug = uri.getQueryParameter("slug");
+            if (slug != null && !slug.isEmpty()) {
+                return "https://www.ebostay.com/pwa/?package=" + Uri.encode(slug);
+            }
+            return "https://www.ebostay.com/pwa/?page=packages";
+        }
+        if (path.contains("activity")) {
+            String slug = uri.getQueryParameter("slug");
+            if (slug != null && !slug.isEmpty()) {
+                return "https://www.ebostay.com/pwa/?activity=" + Uri.encode(slug);
+            }
+        }
+
         if (path.equals("/") || path.isEmpty()) {
             return PWA_URL + (query.isEmpty() ? "" : query) + fragment;
         }
         if (path.startsWith("/pwa")) {
             return "https://www.ebostay.com" + path + query + fragment;
         }
-        return "https://www.ebostay.com" + path + query + fragment;
+        // Any other site link: open PWA home (keeps user in app)
+        return PWA_URL;
     }
 
     @Override
