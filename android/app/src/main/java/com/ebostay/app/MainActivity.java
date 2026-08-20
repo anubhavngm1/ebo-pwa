@@ -121,12 +121,15 @@ public class MainActivity extends AppCompatActivity {
                     return true;
                 }
 
-                // Google OAuth must run outside WebView so the phone Gmail account picker works.
-                // google-login.php detects EboStayApp UA and returns ebostay://oauth-success?token=...
+                // google-login.php MUST stay in WebView (sets is_app via EboStayApp UA + state).
+                // Only Google's own auth pages open in Chrome so the phone account picker works.
+                // After login, google-callback redirects to ebostay://oauth-success?token=...
                 boolean isGoogleAuth = host.contains("accounts.google")
-                        || host.contains("accounts.youtube")
-                        || host.contains("google.com") && (url.contains("/o/oauth2") || url.contains("oauth") || url.contains("ServiceLogin") || url.contains("signin"))
-                        || (host.contains("ebostay.com") && url.contains("google-login.php"));
+                        || host.contains("accounts.youtube.com")
+                        || (host.contains("google.") && (url.contains("/o/oauth2")
+                            || url.contains("ServiceLogin")
+                            || url.contains("signin/oauth")
+                            || url.contains("AccountChooser")));
                 if (isGoogleAuth) {
                     try {
                         Intent i = new Intent(Intent.ACTION_VIEW, uri);
