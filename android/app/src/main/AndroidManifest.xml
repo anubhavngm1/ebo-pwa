@@ -21,17 +21,22 @@
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.EBOStay">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- App Links / deep link into PWA paths -->
+
+            <!--
+              Android App Links: when app is installed, https://ebostay.com
+              opens in the app instead of the browser (after assetlinks.json verify).
+            -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="www.ebostay.com" android:pathPrefix="/pwa" />
-                <data android:scheme="https" android:host="ebostay.com" android:pathPrefix="/pwa" />
+                <data android:scheme="https" android:host="www.ebostay.com" />
+                <data android:scheme="https" android:host="ebostay.com" />
             </intent-filter>
         </activity>
 

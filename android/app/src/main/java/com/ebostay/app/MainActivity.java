@@ -129,11 +129,7 @@ public class MainActivity extends AppCompatActivity {
         requestNotificationPermission();
         fetchFcmToken();
 
-        String startUrl = PWA_URL;
-        Intent intent = getIntent();
-        if (intent != null && intent.getData() != null) {
-            startUrl = intent.getData().toString();
-        }
+        String startUrl = resolveAppUrl(getIntent());
         webView.loadUrl(startUrl);
     }
 
@@ -193,9 +189,29 @@ public class MainActivity extends AppCompatActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        if (intent.getData() != null && webView != null) {
-            webView.loadUrl(intent.getData().toString());
+        if (webView != null) {
+            webView.loadUrl(resolveAppUrl(intent));
         }
+    }
+
+    /**
+     * Map any ebostay.com link into the in-app WebView URL.
+     */
+    private String resolveAppUrl(Intent intent) {
+        if (intent == null || intent.getData() == null) return PWA_URL;
+        Uri uri = intent.getData();
+        String host = uri.getHost() == null ? "" : uri.getHost();
+        if (!host.contains("ebostay.com")) return PWA_URL;
+        String path = uri.getPath() == null ? "/" : uri.getPath();
+        String query = uri.getEncodedQuery() == null ? "" : ("?" + uri.getEncodedQuery());
+        String fragment = uri.getEncodedFragment() == null ? "" : ("#" + uri.getEncodedFragment());
+        if (path.equals("/") || path.isEmpty()) {
+            return PWA_URL + (query.isEmpty() ? "" : query) + fragment;
+        }
+        if (path.startsWith("/pwa")) {
+            return "https://www.ebostay.com" + path + query + fragment;
+        }
+        return "https://www.ebostay.com" + path + query + fragment;
     }
 
     public String getFcmToken() {
