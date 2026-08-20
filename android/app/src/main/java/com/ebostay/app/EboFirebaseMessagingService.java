@@ -73,14 +73,18 @@ public class EboFirebaseMessagingService extends FirebaseMessagingService {
                     this, (int) (System.currentTimeMillis() % 100000), open,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-            NotificationCompat.Builder nb = new NotificationCompat.Builder(this, CHANNEL_ID)
+            boolean silent = data != null && "1".equals(data.get("silent"));
+            String channel = silent ? "ebo_silent" : CHANNEL_ID;
+            int priority = silent ? NotificationCompat.PRIORITY_DEFAULT : NotificationCompat.PRIORITY_MAX;
+
+            NotificationCompat.Builder nb = new NotificationCompat.Builder(this, channel)
                     .setSmallIcon(R.mipmap.ic_launcher)
                     .setContentTitle(title)
                     .setContentText(body)
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
                     .setAutoCancel(true)
                     .setContentIntent(pi)
-                    .setPriority(NotificationCompat.PRIORITY_MAX)
+                    .setPriority(priority)
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .setDefaults(NotificationCompat.DEFAULT_ALL)
@@ -123,24 +127,38 @@ public class EboFirebaseMessagingService extends FirebaseMessagingService {
         }
     }
 
-    /** Create high-importance channel (heads-up / popup). Safe to call from Activity. */
+    /** Create alert (heads-up) + silent (tray only) channels. Safe to call from Activity. */
     public static void ensureChannel(Context ctx) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel ch = new NotificationChannel(
-                    CHANNEL_ID, "EBO Alerts", NotificationManager.IMPORTANCE_HIGH);
-            ch.setDescription("Bookings, offers & reminders — popup alerts");
-            ch.enableVibration(true);
-            ch.setVibrationPattern(new long[]{0, 250, 150, 250});
-            ch.enableLights(true);
-            ch.setShowBadge(true);
-            ch.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
-            AudioAttributes aa = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build();
-            ch.setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI, aa);
-            NotificationManager nm = ctx.getSystemService(NotificationManager.class);
-            if (nm != null) nm.createNotificationChannel(ch);
-        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+        if (nm == null) return;
+
+        AudioAttributes aa = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+
+        // Heads-up / popup
+        NotificationChannel alerts = new NotificationChannel(
+                CHANNEL_ID, "EBO Alerts", NotificationManager.IMPORTANCE_HIGH);
+        alerts.setDescription("Bookings, offers & reminders — popup alerts");
+        alerts.enableVibration(true);
+        alerts.setVibrationPattern(new long[]{0, 250, 150, 250});
+        alerts.enableLights(true);
+        alerts.setShowBadge(true);
+        alerts.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
+        alerts.setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI, aa);
+        nm.createNotificationChannel(alerts);
+
+        // Silent: tray + vibrate, no heads-up popup
+        NotificationChannel silent = new NotificationChannel(
+                "ebo_silent", "EBO Silent", NotificationManager.IMPORTANCE_DEFAULT);
+        silent.setDescription("Quiet alerts — notification panel only, no popup");
+        silent.enableVibration(true);
+        silent.setVibrationPattern(new long[]{0, 180, 100, 180});
+        silent.setShowBadge(true);
+        silent.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
+        silent.setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI, aa);
+        nm.createNotificationChannel(silent);
     }
 }
