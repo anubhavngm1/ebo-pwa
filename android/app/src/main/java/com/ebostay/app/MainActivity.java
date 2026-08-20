@@ -238,6 +238,21 @@ public class MainActivity extends AppCompatActivity {
         webView.post(() -> webView.evaluateJavascript(js, null));
     }
 
+
+    /** Extract segment after /name/ in path, e.g. /package/goa-tour/ → goa-tour */
+    private static String pathSegmentAfter(String path, String name) {
+        if (path == null || name == null) return null;
+        String marker = "/" + name + "/";
+        int i = path.toLowerCase().indexOf(marker);
+        if (i < 0) return null;
+        String rest = path.substring(i + marker.length());
+        int slash = rest.indexOf('/');
+        if (slash >= 0) rest = rest.substring(0, slash);
+        rest = rest.trim();
+        if (rest.isEmpty() || rest.contains(".php")) return null;
+        return rest;
+    }
+
     /** Handle ebostay://oauth-success?token=... from Google callback */
     private void handleOAuthDeepLink(Uri uri) {
         if (uri == null) return;
