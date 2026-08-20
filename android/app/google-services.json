@@ -1,13 +1,32 @@
 {
   "project_info": {
-    "project_number": "804140839522",
-    "project_id": "ebo-stay-8de59",
-    "storage_bucket": "ebo-stay-8de59.firebasestorage.app"
+    "project_number": "162411339465",
+    "project_id": "ebo-admin",
+    "storage_bucket": "ebo-admin.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:804140839522:android:e6b6b856a7507e9f42573b",
+        "mobilesdk_app_id": "1:162411339465:android:eec25ccc6da9808c667718",
+        "android_client_info": {
+          "package_name": "com.ebostay.admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRhotk-TlZt-0hm3IV6MQEJcRWrVjx6w8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:162411339465:android:489e488def1b34de667718",
         "android_client_info": {
           "package_name": "com.ebostay.app"
         }
@@ -15,7 +34,45 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyB6i1ulkj57LRzJR6g4qY1J7K-2Rt7-nLc"
+          "current_key": "AIzaSyDRhotk-TlZt-0hm3IV6MQEJcRWrVjx6w8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:162411339465:android:0afbe401380e5f6a667718",
+        "android_client_info": {
+          "package_name": "com.ebostay.employee"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRhotk-TlZt-0hm3IV6MQEJcRWrVjx6w8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:162411339465:android:446587e2244e5512667718",
+        "android_client_info": {
+          "package_name": "com.ebostay.hr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRhotk-TlZt-0hm3IV6MQEJcRWrVjx6w8"
         }
       ],
       "services": {
