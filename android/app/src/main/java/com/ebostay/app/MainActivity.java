@@ -262,9 +262,9 @@ public class MainActivity extends AppCompatActivity {
         if ("oauth-success".equalsIgnoreCase(host) || "oauth".equalsIgnoreCase(host)) {
             String token = uri.getQueryParameter("token");
             if (token != null && !token.isEmpty() && webView != null) {
-                String loginUrl = "https://www.ebostay.com/session-login.php?token="
+                String loginUrl = "https://www.ebostay.com/pwa/index.html?gauth_token="
                         + Uri.encode(token);
-                Log.d(TAG, "OAuth success — loading session-login in WebView");
+                Log.d(TAG, "OAuth success — loading PWA with gauth_token");
                 webView.loadUrl(loginUrl);
             }
         }
@@ -281,7 +281,7 @@ public class MainActivity extends AppCompatActivity {
             if ("oauth-success".equalsIgnoreCase(host) || "oauth".equalsIgnoreCase(host)) {
                 String token = uri.getQueryParameter("token");
                 if (token != null && !token.isEmpty()) {
-                    return "https://www.ebostay.com/session-login.php?token=" + Uri.encode(token);
+                    return "https://www.ebostay.com/pwa/index.html?gauth_token=" + Uri.encode(token);
                 }
             }
             return PWA_URL;
