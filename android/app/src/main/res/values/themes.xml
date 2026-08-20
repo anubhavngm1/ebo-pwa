@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Launch theme: shown instantly before Activity draws (no black screen) -->
+    <style name="Theme.EBOStay.Splash" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:statusBarColor">#0F766E</item>
+        <item name="android:navigationBarColor">#0F766E</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="colorPrimary">#0F766E</item>
+    </style>
+
     <style name="Theme.EBOStay" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">#0F766E</item>
         <item name="colorPrimaryVariant">#0D9488</item>

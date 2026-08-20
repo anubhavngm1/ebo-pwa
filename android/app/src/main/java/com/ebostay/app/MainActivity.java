@@ -37,26 +37,51 @@ public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
     private ProgressBar progress;
+    private View splashView;
     private ValueCallback<Uri[]> filePathCallback;
     private String fcmToken = "";
+    private boolean splashHidden = false;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Splash theme is set in Manifest — window shows branded bg immediately (no black flash)
         super.onCreate(savedInstanceState);
         try {
             setContentView(R.layout.activity_main);
             webView = findViewById(R.id.webview);
             progress = findViewById(R.id.progress);
+            splashView = findViewById(R.id.splash);
             setupWebView();
             requestNotificationPermission();
             // FCM only if Firebase is configured — never crash
             safeInitFcm();
             webView.loadUrl(resolveAppUrl(getIntent()));
+            // Safety: hide splash after 8s even if page stuck
+            if (splashView != null) {
+                splashView.postDelayed(this::hideSplash, 8000);
+            }
         } catch (Throwable t) {
             Log.e(TAG, "Fatal in onCreate", t);
-            // Last resort: finish cleanly rather than system crash dialog loop
             finish();
+        }
+    }
+
+    private void hideSplash() {
+        if (splashHidden || splashView == null) return;
+        splashHidden = true;
+        try {
+            splashView.animate()
+                    .alpha(0f)
+                    .setDuration(320)
+                    .withEndAction(() -> {
+                        splashView.setVisibility(View.GONE);
+                        // Restore normal window background after splash
+                        getWindow().setBackgroundDrawableResource(android.R.color.white);
+                    })
+                    .start();
+        } catch (Throwable t) {
+            splashView.setVisibility(View.GONE);
         }
     }
 
@@ -103,6 +128,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 if (progress != null) progress.setVisibility(View.GONE);
+                hideSplash();
                 view.evaluateJavascript(
                         "window.__EBO_NATIVE__=true;window.EboNativeApp=true;", null);
                 if (fcmToken != null && !fcmToken.isEmpty()) {
@@ -165,12 +191,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void injectFcmToken(String token) {
-        if (webView == null || token == null) return;
+        if (webView == null || token == null || token.isEmpty()) return;
         String safe = token.replace("\\", "\\\\").replace("'", "\\'");
-        webView.post(() -> webView.evaluateJavascript(
-                "window.__EBO_FCM_TOKEN__='" + safe + "';"
-                        + "if(window.onEboFcmToken){try{window.onEboFcmToken('" + safe + "');}catch(e){}}",
-                null));
+        // Expose token + auto-register with server so Admin push reaches this device
+        String js = "window.__EBO_FCM_TOKEN__='" + safe + "';"
+                + "window.__EBO_NATIVE__=true;"
+                + "if(window.onEboFcmToken){try{window.onEboFcmToken('" + safe + "');}catch(e){}}"
+                + "(function(t){try{"
+                + "fetch('/pwa/api/fcm.php?action=register',{method:'POST',credentials:'same-origin',"
+                + "headers:{'Content-Type':'application/json'},"
+                + "body:JSON.stringify({token:t,platform:'android'})}).catch(function(){});"
+                + "}catch(e){}})('" + safe + "');";
+        webView.post(() -> webView.evaluateJavascript(js, null));
     }
 
     private String resolveAppUrl(Intent intent) {

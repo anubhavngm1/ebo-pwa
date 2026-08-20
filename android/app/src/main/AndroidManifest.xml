@@ -22,17 +22,13 @@
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
-            android:theme="@style/Theme.EBOStay">
+            android:theme="@style/Theme.EBOStay.Splash">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!--
-              Android App Links: when app is installed, https://ebostay.com
-              opens in the app instead of the browser (after assetlinks.json verify).
-            -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -53,5 +49,5 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="ebo_default" />
-</application>
+    </application>
 </manifest>
