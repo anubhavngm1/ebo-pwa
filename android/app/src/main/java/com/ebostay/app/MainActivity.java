@@ -277,27 +277,56 @@ public class MainActivity extends AppCompatActivity {
         String query = uri.getEncodedQuery() == null ? "" : ("?" + uri.getEncodedQuery());
         String fragment = uri.getEncodedFragment() == null ? "" : ("#" + uri.getEncodedFragment());
 
-        // Website hotel stay → open inside PWA hotel detail
-        if (path.contains("hotel-detail") || path.contains("hotel.php")) {
+        // Pretty URLs: /package/{slug}/  or  package.php?slug=
+        String pkgSlug = pathSegmentAfter(path, "package");
+        if (pkgSlug == null || pkgSlug.isEmpty()) {
+            pkgSlug = uri.getQueryParameter("slug");
+            if (pkgSlug != null && !path.contains("package")) pkgSlug = null;
+        }
+        // Only treat as single-package page (not /packages/ list)
+        boolean isPackageDetail = path.contains("/package/")
+                || path.endsWith("package.php")
+                || (path.contains("package.php") && uri.getQueryParameter("slug") != null);
+        if (isPackageDetail) {
+            if (pkgSlug == null || pkgSlug.isEmpty()) {
+                pkgSlug = uri.getQueryParameter("slug");
+            }
+            if (pkgSlug != null && !pkgSlug.isEmpty()
+                    && !pkgSlug.equals("packages") && !pkgSlug.contains("tour-packages")) {
+                return "https://www.ebostay.com/pwa/?package=" + Uri.encode(pkgSlug);
+            }
+        }
+        if (path.equals("/packages") || path.equals("/packages/") || path.contains("packages.php")
+                || path.matches(".*/packages/?")) {
+            return "https://www.ebostay.com/pwa/?page=packages";
+        }
+
+        // Pretty URLs: /hotel/{slug}/  or  hotel-detail.php?id= / ?slug=
+        String hotelSlug = pathSegmentAfter(path, "hotel");
+        if (path.contains("hotel-detail") || path.contains("/hotel/")
+                || (path.contains("hotel.php") && !path.contains("hotels"))) {
             String id = uri.getQueryParameter("id");
             if (id == null || id.isEmpty()) id = uri.getQueryParameter("hotel_id");
             if (id != null && !id.isEmpty()) {
                 return "https://www.ebostay.com/pwa/?hotel_id=" + Uri.encode(id);
             }
+            String hSlug = hotelSlug;
+            if (hSlug == null || hSlug.isEmpty()) hSlug = uri.getQueryParameter("slug");
+            if (hSlug != null && !hSlug.isEmpty() && !hSlug.equals("detail")) {
+                return "https://www.ebostay.com/pwa/?hotel_slug=" + Uri.encode(hSlug);
+            }
             return "https://www.ebostay.com/pwa/?page=hotels";
         }
-        // Package / activity pages on website
-        if (path.contains("package")) {
-            String slug = uri.getQueryParameter("slug");
-            if (slug != null && !slug.isEmpty()) {
-                return "https://www.ebostay.com/pwa/?package=" + Uri.encode(slug);
-            }
-            return "https://www.ebostay.com/pwa/?page=packages";
+        if (path.equals("/hotels") || path.equals("/hotels/") || path.contains("hotels.php")) {
+            return "https://www.ebostay.com/pwa/?page=hotels";
         }
+
+        // Activity: /activity.php?slug= or path
         if (path.contains("activity")) {
-            String slug = uri.getQueryParameter("slug");
-            if (slug != null && !slug.isEmpty()) {
-                return "https://www.ebostay.com/pwa/?activity=" + Uri.encode(slug);
+            String aSlug = uri.getQueryParameter("slug");
+            if (aSlug == null || aSlug.isEmpty()) aSlug = pathSegmentAfter(path, "activity");
+            if (aSlug != null && !aSlug.isEmpty()) {
+                return "https://www.ebostay.com/pwa/?activity=" + Uri.encode(aSlug);
             }
         }
 
