@@ -62,3 +62,7 @@ cd android
 gradle wrapper --gradle-version 8.5
 ./gradlew assembleDebug
 ```
+
+## Firebase (push notifications)
+
+See **[FIREBASE_SETUP.md](./FIREBASE_SETUP.md)** — create project, download `google-services.json`, add GitHub secret `GOOGLE_SERVICES_JSON`, rebuild APK.
