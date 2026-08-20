@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
@@ -19,20 +20,17 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.google.firebase.messaging.FirebaseMessaging;
-
 /**
  * Native shell for EBO Stay customer PWA.
- * Web Push is disabled in the page when window.EboNative is present.
- * FCM token is exposed to JS via the bridge for server registration.
+ * Firebase/FCM is optional — missing google-services must NOT crash the app.
  */
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "EboStay";
     private static final String PWA_URL = "https://www.ebostay.com/pwa/";
     private static final int FILE_CHOOSER_REQ = 1001;
     private static final int NOTIF_PERM_REQ = 1002;
@@ -46,11 +44,23 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        try {
+            setContentView(R.layout.activity_main);
+            webView = findViewById(R.id.webview);
+            progress = findViewById(R.id.progress);
+            setupWebView();
+            requestNotificationPermission();
+            // FCM only if Firebase is configured — never crash
+            safeInitFcm();
+            webView.loadUrl(resolveAppUrl(getIntent()));
+        } catch (Throwable t) {
+            Log.e(TAG, "Fatal in onCreate", t);
+            // Last resort: finish cleanly rather than system crash dialog loop
+            finish();
+        }
+    }
 
-        webView = findViewById(R.id.webview);
-        progress = findViewById(R.id.progress);
-
+    private void setupWebView() {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
@@ -64,9 +74,8 @@ public class MainActivity extends AppCompatActivity {
         s.setAllowFileAccess(true);
         s.setAllowContentAccess(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-        // Identify as native app for the website JS
-        String ua = s.getUserAgentString() + " EboStayApp/1.0";
-        s.setUserAgentString(ua);
+        s.setUserAgentString(s.getUserAgentString() + " EboStayApp/1.0");
+        s.setCacheMode(WebSettings.LOAD_DEFAULT);
 
         webView.addJavascriptInterface(new EboNativeBridge(this), "EboNative");
 
@@ -75,9 +84,9 @@ public class MainActivity extends AppCompatActivity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 String host = uri.getHost() == null ? "" : uri.getHost();
-                // Keep EBO domains in WebView; open others externally
-                if (host.contains("ebostay.com") || host.contains("payu") || host.contains("paypal")
-                        || host.contains("google") || host.contains("accounts.google")) {
+                if (host.contains("ebostay.com") || host.contains("payu")
+                        || host.contains("paypal") || host.contains("google")
+                        || host.contains("accounts.google")) {
                     return false;
                 }
                 try {
@@ -88,15 +97,14 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                progress.setVisibility(View.VISIBLE);
+                if (progress != null) progress.setVisibility(View.VISIBLE);
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                progress.setVisibility(View.GONE);
-                // Ensure native flag is visible to page JS
+                if (progress != null) progress.setVisibility(View.GONE);
                 view.evaluateJavascript(
-                    "window.__EBO_NATIVE__=true;window.EboNativeApp=true;", null);
+                        "window.__EBO_NATIVE__=true;window.EboNativeApp=true;", null);
                 if (fcmToken != null && !fcmToken.isEmpty()) {
                     injectFcmToken(fcmToken);
                 }
@@ -106,6 +114,7 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
+                if (progress == null) return;
                 progress.setProgress(newProgress);
                 progress.setVisibility(newProgress >= 100 ? View.GONE : View.VISIBLE);
             }
@@ -115,9 +124,8 @@ public class MainActivity extends AppCompatActivity {
                                              FileChooserParams fileChooserParams) {
                 if (filePathCallback != null) filePathCallback.onReceiveValue(null);
                 filePathCallback = cb;
-                Intent intent = fileChooserParams.createIntent();
                 try {
-                    startActivityForResult(intent, FILE_CHOOSER_REQ);
+                    startActivityForResult(fileChooserParams.createIntent(), FILE_CHOOSER_REQ);
                 } catch (Exception e) {
                     filePathCallback = null;
                     return false;
@@ -125,12 +133,6 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             }
         });
-
-        requestNotificationPermission();
-        fetchFcmToken();
-
-        String startUrl = resolveAppUrl(getIntent());
-        webView.loadUrl(startUrl);
     }
 
     private void requestNotificationPermission() {
@@ -143,13 +145,23 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void fetchFcmToken() {
-        FirebaseMessaging.getInstance().getToken()
-                .addOnCompleteListener(task -> {
-                    if (!task.isSuccessful()) return;
-                    fcmToken = task.getResult();
-                    injectFcmToken(fcmToken);
-                });
+    /** Firebase is optional — placeholder google-services must not kill the app. */
+    private void safeInitFcm() {
+        try {
+            Class.forName("com.google.firebase.FirebaseApp");
+            com.google.firebase.FirebaseApp.initializeApp(this);
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
+                    .addOnCompleteListener(task -> {
+                        if (!task.isSuccessful() || task.getResult() == null) {
+                            Log.w(TAG, "FCM token unavailable (Firebase not configured?)");
+                            return;
+                        }
+                        fcmToken = task.getResult();
+                        injectFcmToken(fcmToken);
+                    });
+        } catch (Throwable t) {
+            Log.w(TAG, "Firebase/FCM disabled: " + t.getMessage());
+        }
     }
 
     private void injectFcmToken(String token) {
@@ -159,6 +171,23 @@ public class MainActivity extends AppCompatActivity {
                 "window.__EBO_FCM_TOKEN__='" + safe + "';"
                         + "if(window.onEboFcmToken){try{window.onEboFcmToken('" + safe + "');}catch(e){}}",
                 null));
+    }
+
+    private String resolveAppUrl(Intent intent) {
+        if (intent == null || intent.getData() == null) return PWA_URL;
+        Uri uri = intent.getData();
+        String host = uri.getHost() == null ? "" : uri.getHost();
+        if (!host.contains("ebostay.com")) return PWA_URL;
+        String path = uri.getPath() == null ? "/" : uri.getPath();
+        String query = uri.getEncodedQuery() == null ? "" : ("?" + uri.getEncodedQuery());
+        String fragment = uri.getEncodedFragment() == null ? "" : ("#" + uri.getEncodedFragment());
+        if (path.equals("/") || path.isEmpty()) {
+            return PWA_URL + (query.isEmpty() ? "" : query) + fragment;
+        }
+        if (path.startsWith("/pwa")) {
+            return "https://www.ebostay.com" + path + query + fragment;
+        }
+        return "https://www.ebostay.com" + path + query + fragment;
     }
 
     @Override
@@ -176,9 +205,8 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == FILE_CHOOSER_REQ) {
             if (filePathCallback == null) return;
             Uri[] results = null;
-            if (resultCode == Activity.RESULT_OK && data != null) {
-                String dataString = data.getDataString();
-                if (dataString != null) results = new Uri[]{Uri.parse(dataString)};
+            if (resultCode == Activity.RESULT_OK && data != null && data.getDataString() != null) {
+                results = new Uri[]{Uri.parse(data.getDataString())};
             }
             filePathCallback.onReceiveValue(results);
             filePathCallback = null;
@@ -192,26 +220,6 @@ public class MainActivity extends AppCompatActivity {
         if (webView != null) {
             webView.loadUrl(resolveAppUrl(intent));
         }
-    }
-
-    /**
-     * Map any ebostay.com link into the in-app WebView URL.
-     */
-    private String resolveAppUrl(Intent intent) {
-        if (intent == null || intent.getData() == null) return PWA_URL;
-        Uri uri = intent.getData();
-        String host = uri.getHost() == null ? "" : uri.getHost();
-        if (!host.contains("ebostay.com")) return PWA_URL;
-        String path = uri.getPath() == null ? "/" : uri.getPath();
-        String query = uri.getEncodedQuery() == null ? "" : ("?" + uri.getEncodedQuery());
-        String fragment = uri.getEncodedFragment() == null ? "" : ("#" + uri.getEncodedFragment());
-        if (path.equals("/") || path.isEmpty()) {
-            return PWA_URL + (query.isEmpty() ? "" : query) + fragment;
-        }
-        if (path.startsWith("/pwa")) {
-            return "https://www.ebostay.com" + path + query + fragment;
-        }
-        return "https://www.ebostay.com" + path + query + fragment;
     }
 
     public String getFcmToken() {
