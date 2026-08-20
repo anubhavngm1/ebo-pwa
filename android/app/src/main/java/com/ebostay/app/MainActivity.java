@@ -101,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
         s.setAllowFileAccess(true);
         s.setAllowContentAccess(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-        s.setUserAgentString(s.getUserAgentString() + " EboStayApp/1.0");
+        s.setUserAgentString(s.getUserAgentString() + " EboStayApp/1.0 EBOStayApp/1.0");
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
 
         webView.addJavascriptInterface(new EboNativeBridge(this), "EboNative");
@@ -162,6 +162,7 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 if (progress != null) progress.setVisibility(View.GONE);
                 hideSplash();
+                try { CookieManager.getInstance().flush(); } catch (Throwable ignored) {}
                 view.evaluateJavascript(
                         "window.__EBO_NATIVE__=true;window.EboNativeApp=true;", null);
                 if (fcmToken != null && !fcmToken.isEmpty()) {
