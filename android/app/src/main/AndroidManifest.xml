@@ -29,12 +29,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- App Links (https) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="www.ebostay.com" />
                 <data android:scheme="https" android:host="ebostay.com" />
+            </intent-filter>
+
+            <!-- Google OAuth return: ebostay://oauth-success?token=... -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="ebostay" android:host="oauth-success" />
+                <data android:scheme="ebostay" android:host="oauth" />
             </intent-filter>
         </activity>
 
@@ -48,6 +58,6 @@
 
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="ebo_default" />
+            android:value="ebo_alerts" />
     </application>
 </manifest>

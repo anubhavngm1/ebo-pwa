@@ -110,10 +110,38 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
+                if (uri == null) return false;
+                String scheme = uri.getScheme() == null ? "" : uri.getScheme();
                 String host = uri.getHost() == null ? "" : uri.getHost();
+                String url = uri.toString();
+
+                // Deep link back from Google OAuth (Custom Tab / external browser)
+                if ("ebostay".equalsIgnoreCase(scheme)) {
+                    handleOAuthDeepLink(uri);
+                    return true;
+                }
+
+                // Google OAuth must run outside WebView so the phone Gmail account picker works.
+                // google-login.php detects EboStayApp UA and returns ebostay://oauth-success?token=...
+                boolean isGoogleAuth = host.contains("accounts.google")
+                        || host.contains("accounts.youtube")
+                        || host.contains("google.com") && (url.contains("/o/oauth2") || url.contains("oauth") || url.contains("ServiceLogin") || url.contains("signin"))
+                        || (host.contains("ebostay.com") && url.contains("google-login.php"));
+                if (isGoogleAuth) {
+                    try {
+                        Intent i = new Intent(Intent.ACTION_VIEW, uri);
+                        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(i);
+                    } catch (Exception e) {
+                        Log.w(TAG, "open Google auth failed", e);
+                    }
+                    return true;
+                }
+
+                // Stay in WebView for our site + payment gateways
                 if (host.contains("ebostay.com") || host.contains("payu")
-                        || host.contains("paypal") || host.contains("google")
-                        || host.contains("accounts.google")) {
+                        || host.contains("paypal") || host.contains("razorpay")
+                        || host.contains("checkout.razorpay")) {
                     return false;
                 }
                 try {
@@ -207,9 +235,39 @@ public class MainActivity extends AppCompatActivity {
         webView.post(() -> webView.evaluateJavascript(js, null));
     }
 
+    /** Handle ebostay://oauth-success?token=... from Google callback */
+    private void handleOAuthDeepLink(Uri uri) {
+        if (uri == null) return;
+        String host = uri.getHost() == null ? "" : uri.getHost();
+        // ebostay://oauth-success?token=xxx  → host is "oauth-success"
+        if ("oauth-success".equalsIgnoreCase(host) || "oauth".equalsIgnoreCase(host)) {
+            String token = uri.getQueryParameter("token");
+            if (token != null && !token.isEmpty() && webView != null) {
+                String loginUrl = "https://www.ebostay.com/session-login.php?token="
+                        + Uri.encode(token);
+                Log.d(TAG, "OAuth success — loading session-login in WebView");
+                webView.loadUrl(loginUrl);
+            }
+        }
+    }
+
     private String resolveAppUrl(Intent intent) {
         if (intent == null || intent.getData() == null) return PWA_URL;
         Uri uri = intent.getData();
+        String scheme = uri.getScheme() == null ? "" : uri.getScheme();
+
+        // App opened via ebostay://oauth-success?token=...
+        if ("ebostay".equalsIgnoreCase(scheme)) {
+            String host = uri.getHost() == null ? "" : uri.getHost();
+            if ("oauth-success".equalsIgnoreCase(host) || "oauth".equalsIgnoreCase(host)) {
+                String token = uri.getQueryParameter("token");
+                if (token != null && !token.isEmpty()) {
+                    return "https://www.ebostay.com/session-login.php?token=" + Uri.encode(token);
+                }
+            }
+            return PWA_URL;
+        }
+
         String host = uri.getHost() == null ? "" : uri.getHost();
         if (!host.contains("ebostay.com")) return PWA_URL;
         String path = uri.getPath() == null ? "/" : uri.getPath();
@@ -251,9 +309,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        if (webView != null) {
-            webView.loadUrl(resolveAppUrl(intent));
+        if (webView == null || intent == null) return;
+        Uri data = intent.getData();
+        if (data != null && "ebostay".equalsIgnoreCase(data.getScheme())) {
+            handleOAuthDeepLink(data);
+            return;
         }
+        webView.loadUrl(resolveAppUrl(intent));
     }
 
     public String getFcmToken() {
