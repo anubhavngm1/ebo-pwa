@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "ebo-stay-placeholder",
-    "storage_bucket": "ebo-stay-placeholder.appspot.com"
+    "project_number": "804140839522",
+    "project_id": "ebo-stay-8de59",
+    "storage_bucket": "ebo-stay-8de59.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "mobilesdk_app_id": "1:804140839522:android:e6b6b856a7507e9f42573b",
         "android_client_info": {
           "package_name": "com.ebostay.app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "REPLACE_WITH_YOUR_FIREBASE_API_KEY"
+          "current_key": "AIzaSyB6i1ulkj57LRzJR6g4qY1J7K-2Rt7-nLc"
         }
       ],
       "services": {

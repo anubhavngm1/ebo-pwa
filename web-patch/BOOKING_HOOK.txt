@@ -1,0 +1,7 @@
+After successful payment / booking confirm in booking.php, add:
+
+require_once __DIR__ . '/../../includes/fcm_push.php';
+// $customerId and $bookingRef from your flow:
+if (!empty($customerId) && !empty($bookingRef)) {
+    fcmNotifyBookingConfirmed($pdo, (int)$customerId, $bookingRef, 'Booking confirmed');
+}

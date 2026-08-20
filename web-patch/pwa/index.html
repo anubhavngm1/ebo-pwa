@@ -1525,6 +1525,34 @@ function registerSW() {
 
 
 // Native Android app detection — skip web push / install banners
+
+// ── Native FCM token → server ─────────────────────────────────
+window.onEboFcmToken = function(token) {
+  if (!token) return;
+  window.__EBO_FCM_TOKEN__ = token;
+  try {
+    fetch('/pwa/api/fcm.php?action=register', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: token, platform: 'android' })
+    }).catch(function(){});
+  } catch (e) {}
+};
+function eboTrackSearchForPush(q) {
+  if (!q || String(q).trim().length < 2) return;
+  var token = window.__EBO_FCM_TOKEN__ || '';
+  try {
+    if (window.EboNative && window.EboNative.getFcmToken) {
+      try { token = token || window.EboNative.getFcmToken() || ''; } catch (e) {}
+    }
+  } catch (e) {}
+  fetch('/pwa/api/fcm.php?action=track-search', {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: String(q).trim(), token: token })
+  }).catch(function(){});
+}
+
 function isEboNativeApp() {
   try {
     if (window.EboNative && (typeof window.EboNative.isNative === 'function' ? window.EboNative.isNative() : true)) return true;
@@ -2540,6 +2568,7 @@ function performHotelSearch() {
   state.hotelSearch    = ''; // clear inline filter
 
   if (state.searchDest) saveRecentSearch(state.searchDest);
+  try { eboTrackSearchForPush(raw || state.searchDest); } catch(e) {}
   updateSearchSummaryUI();
   navTo('hotels');
 }

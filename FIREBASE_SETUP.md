@@ -70,3 +70,24 @@ We can wire `onEboFcmToken` in the PWA to save the token to your DB after login.
 - [ ] `google-services.json` added (secret or file)
 - [ ] New APK built & installed
 - [ ] Test notification received
+
+## Server key (required to *send* notifications)
+
+1. Firebase Console → Project settings → **Cloud Messaging**
+2. If "Cloud Messaging API (Legacy)" is disabled:
+   - Open Google Cloud Console → enable **Firebase Cloud Messaging API**
+   - Create an API key / use Server key shown under Legacy
+3. On server create `includes/fcm_config.php`:
+
+```php
+<?php
+define('FCM_SERVER_KEY', 'YOUR_SERVER_KEY');
+define('FCM_CRON_SECRET', 'random_secret_for_cron');
+```
+
+4. Cron (abandoned search, every 15 min):
+```
+*/15 * * * * curl -s "https://www.ebostay.com/api/fcm-cron.php?key=random_secret_for_cron"
+```
+
+5. Admin send UI: https://www.ebostay.com/admin-pwa/push.html (while logged in as admin)

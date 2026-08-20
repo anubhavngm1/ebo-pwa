@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Send Push — EBO Stay Admin</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#f3f6f5;margin:0;padding:24px;color:#0f172a}
+  .card{max-width:520px;margin:0 auto;background:#fff;border-radius:16px;padding:24px;box-shadow:0 8px 24px rgba(15,23,42,.08)}
+  h1{font-size:20px;margin:0 0 8px}
+  p{color:#64748b;font-size:13px;margin:0 0 20px}
+  label{display:block;font-size:12px;font-weight:700;color:#64748b;margin:12px 0 6px}
+  input,textarea{width:100%;box-sizing:border-box;padding:12px;border:1px solid #e2e8f0;border-radius:10px;font:inherit}
+  button{margin-top:16px;width:100%;padding:14px;border:0;border-radius:12px;background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;font-weight:800;cursor:pointer}
+  .msg{margin-top:12px;font-size:13px;font-weight:600}
+  .ok{color:#16a34a}.err{color:#e11d48}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>📣 Send App Notification</h1>
+  <p>Requires admin login on this browser session. Supports title, body & optional image URL.</p>
+  <label>Title</label>
+  <input id="title" placeholder="Looking for Goa hotels?">
+  <label>Message</label>
+  <textarea id="body" rows="3" placeholder="Enjoy 10% off on Goa stays — book today on EBO Stay"></textarea>
+  <label>Image URL (optional)</label>
+  <input id="image" placeholder="https://www.ebostay.com/assets/images/...">
+  <label>Open URL (optional)</label>
+  <input id="url" value="https://www.ebostay.com/pwa/">
+  <button onclick="sendPush()">Send to all app users</button>
+  <div class="msg" id="msg"></div>
+</div>
+<script>
+async function sendPush(){
+  const msg=document.getElementById('msg');
+  msg.textContent='Sending…'; msg.className='msg';
+  try{
+    const res=await fetch('/admin-pwa/api/push-send.php',{
+      method:'POST',credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        title:document.getElementById('title').value.trim(),
+        body:document.getElementById('body').value.trim(),
+        image:document.getElementById('image').value.trim(),
+        url:document.getElementById('url').value.trim()
+      })
+    });
+    const j=await res.json();
+    if(j.success){ msg.textContent='Sent to '+ (j.sent||0) +' device(s)'; msg.className='msg ok'; }
+    else { msg.textContent=j.error||'Failed'; msg.className='msg err'; }
+  }catch(e){ msg.textContent=e.message; msg.className='msg err'; }
+}
+</script>
+</body>
+</html>

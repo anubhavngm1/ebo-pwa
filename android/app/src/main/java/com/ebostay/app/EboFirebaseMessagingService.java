@@ -4,6 +4,8 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.util.Log;
 
@@ -13,6 +15,14 @@ import androidx.core.app.NotificationCompat;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Map;
+
+/**
+ * Native FCM with optional big-picture image (data.image / data.imageUrl).
+ */
 public class EboFirebaseMessagingService extends FirebaseMessagingService {
 
     public static final String CHANNEL_ID = "ebo_default";
@@ -20,48 +30,89 @@ public class EboFirebaseMessagingService extends FirebaseMessagingService {
 
     @Override
     public void onNewToken(@NonNull String token) {
-        Log.d(TAG, "Token refreshed");
+        Log.d(TAG, "FCM token refreshed");
     }
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage message) {
         try {
             ensureChannel();
+            Map<String, String> data = message.getData();
             String title = "EBO Stay";
             String body = "You have an update";
+            String imageUrl = null;
+            String deepLink = null;
+
             if (message.getNotification() != null) {
                 if (message.getNotification().getTitle() != null)
                     title = message.getNotification().getTitle();
                 if (message.getNotification().getBody() != null)
                     body = message.getNotification().getBody();
-            } else if (message.getData() != null) {
-                if (message.getData().get("title") != null) title = message.getData().get("title");
-                if (message.getData().get("body") != null) body = message.getData().get("body");
+                if (message.getNotification().getImageUrl() != null)
+                    imageUrl = message.getNotification().getImageUrl().toString();
+            }
+            if (data != null) {
+                if (data.get("title") != null) title = data.get("title");
+                if (data.get("body") != null) body = data.get("body");
+                if (data.get("image") != null) imageUrl = data.get("image");
+                if (data.get("imageUrl") != null) imageUrl = data.get("imageUrl");
+                if (data.get("url") != null) deepLink = data.get("url");
+                if (data.get("link") != null) deepLink = data.get("link");
             }
 
             Intent open = new Intent(this, MainActivity.class);
             open.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            String deep = message.getData() != null ? message.getData().get("url") : null;
-            if (deep != null && !deep.isEmpty()) {
-                open.setData(android.net.Uri.parse(deep));
+            if (deepLink != null && !deepLink.isEmpty()) {
+                open.setData(android.net.Uri.parse(deepLink));
             }
 
             PendingIntent pi = PendingIntent.getActivity(
-                    this, 0, open,
+                    this, (int) (System.currentTimeMillis() % 100000), open,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
             NotificationCompat.Builder nb = new NotificationCompat.Builder(this, CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setSmallIcon(R.mipmap.ic_launcher)
                     .setContentTitle(title)
                     .setContentText(body)
+                    .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
                     .setAutoCancel(true)
                     .setContentIntent(pi)
                     .setPriority(NotificationCompat.PRIORITY_HIGH);
 
+            if (imageUrl != null && imageUrl.startsWith("http")) {
+                Bitmap bmp = downloadImage(imageUrl);
+                if (bmp != null) {
+                    nb.setLargeIcon(bmp);
+                    nb.setStyle(new NotificationCompat.BigPictureStyle()
+                            .bigPicture(bmp)
+                            .bigLargeIcon((Bitmap) null)
+                            .setSummaryText(body));
+                }
+            }
+
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            if (nm != null) nm.notify((int) (System.currentTimeMillis() % Integer.MAX_VALUE), nb.build());
+            if (nm != null) {
+                nm.notify((int) (System.currentTimeMillis() % Integer.MAX_VALUE), nb.build());
+            }
         } catch (Throwable t) {
             Log.e(TAG, "onMessageReceived failed", t);
+        }
+    }
+
+    private Bitmap downloadImage(String src) {
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(src).openConnection();
+            c.setConnectTimeout(8000);
+            c.setReadTimeout(8000);
+            c.setDoInput(true);
+            c.connect();
+            InputStream is = c.getInputStream();
+            Bitmap b = BitmapFactory.decodeStream(is);
+            is.close();
+            return b;
+        } catch (Exception e) {
+            Log.w(TAG, "image download failed: " + e.getMessage());
+            return null;
         }
     }
 
@@ -69,7 +120,7 @@ public class EboFirebaseMessagingService extends FirebaseMessagingService {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel ch = new NotificationChannel(
                     CHANNEL_ID, "EBO Stay", NotificationManager.IMPORTANCE_HIGH);
-            ch.setDescription("Booking updates and offers");
+            ch.setDescription("Bookings, offers & reminders");
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) nm.createNotificationChannel(ch);
         }
