@@ -21,6 +21,16 @@ android {
         versionName "1.0.0"
     }
 
+
+    signingConfigs {
+        debug {
+            storeFile file('ebo-debug.keystore')
+            storePassword 'ebo_debug_pass'
+            keyAlias 'ebo_debug'
+            keyPassword 'ebo_debug_pass'
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -29,6 +39,7 @@ android {
         debug {
             // Keep same applicationId as release so App Links (assetlinks) work
             versionNameSuffix "-debug"
+            signingConfig signingConfigs.debug
         }
     }
     compileOptions {
