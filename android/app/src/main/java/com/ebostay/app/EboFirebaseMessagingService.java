@@ -3,9 +3,11 @@ package com.ebostay.app;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.AudioAttributes;
 import android.os.Build;
 import android.util.Log;
 
@@ -21,11 +23,12 @@ import java.net.URL;
 import java.util.Map;
 
 /**
- * Native FCM with optional big-picture image (data.image / data.imageUrl).
+ * Native FCM with heads-up (popup) notifications.
  */
 public class EboFirebaseMessagingService extends FirebaseMessagingService {
 
-    public static final String CHANNEL_ID = "ebo_default";
+    /** Must match FCM android.notification.channel_id from server */
+    public static final String CHANNEL_ID = "ebo_alerts";
     private static final String TAG = "EboFCM";
 
     @Override
@@ -36,7 +39,7 @@ public class EboFirebaseMessagingService extends FirebaseMessagingService {
     @Override
     public void onMessageReceived(@NonNull RemoteMessage message) {
         try {
-            ensureChannel();
+            ensureChannel(this);
             Map<String, String> data = message.getData();
             String title = "EBO Stay";
             String body = "You have an update";
@@ -77,7 +80,11 @@ public class EboFirebaseMessagingService extends FirebaseMessagingService {
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
                     .setAutoCancel(true)
                     .setContentIntent(pi)
-                    .setPriority(NotificationCompat.PRIORITY_HIGH);
+                    .setPriority(NotificationCompat.PRIORITY_MAX)
+                    .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                    .setDefaults(NotificationCompat.DEFAULT_ALL)
+                    .setVibrate(new long[]{0, 250, 150, 250});
 
             if (imageUrl != null && imageUrl.startsWith("http")) {
                 Bitmap bmp = downloadImage(imageUrl);
@@ -116,12 +123,23 @@ public class EboFirebaseMessagingService extends FirebaseMessagingService {
         }
     }
 
-    private void ensureChannel() {
+    /** Create high-importance channel (heads-up / popup). Safe to call from Activity. */
+    public static void ensureChannel(Context ctx) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel ch = new NotificationChannel(
-                    CHANNEL_ID, "EBO Stay", NotificationManager.IMPORTANCE_HIGH);
-            ch.setDescription("Bookings, offers & reminders");
-            NotificationManager nm = getSystemService(NotificationManager.class);
+                    CHANNEL_ID, "EBO Alerts", NotificationManager.IMPORTANCE_HIGH);
+            ch.setDescription("Bookings, offers & reminders — popup alerts");
+            ch.enableVibration(true);
+            ch.setVibrationPattern(new long[]{0, 250, 150, 250});
+            ch.enableLights(true);
+            ch.setShowBadge(true);
+            ch.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
+            AudioAttributes aa = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build();
+            ch.setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI, aa);
+            NotificationManager nm = ctx.getSystemService(NotificationManager.class);
             if (nm != null) nm.createNotificationChannel(ch);
         }
     }

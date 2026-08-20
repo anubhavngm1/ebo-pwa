@@ -54,6 +54,8 @@ public class MainActivity extends AppCompatActivity {
             splashView = findViewById(R.id.splash);
             setupWebView();
             requestNotificationPermission();
+            // Create heads-up notification channel as early as possible
+            try { EboFirebaseMessagingService.ensureChannel(this); } catch (Throwable ignored) {}
             // FCM only if Firebase is configured — never crash
             safeInitFcm();
             webView.loadUrl(resolveAppUrl(getIntent()));
