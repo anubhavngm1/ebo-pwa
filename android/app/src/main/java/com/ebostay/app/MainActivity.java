@@ -293,6 +293,18 @@ public class MainActivity extends AppCompatActivity {
         String query = uri.getEncodedQuery() == null ? "" : ("?" + uri.getEncodedQuery());
         String fragment = uri.getEncodedFragment() == null ? "" : ("#" + uri.getEncodedFragment());
 
+        // Google OAuth redirect (google-login.php / google-callback.php): our https
+        // App Links filter has no pathPrefix, so it matches these paths too and
+        // Android hands the bare URL straight to the app — before Chrome ever
+        // renders google-callback.php's response (which is where the
+        // ebostay://oauth-success deep link + gauth_token actually live). Load the
+        // URL verbatim into the WebView instead of falling through to PWA_URL, so
+        // the callback page runs for real and its own deep-link handoff fires
+        // from inside our WebView via shouldOverrideUrlLoading.
+        if (path.contains("google-callback.php") || path.contains("google-login.php")) {
+            return uri.toString();
+        }
+
         // Pretty URLs: /package/{slug}/  or  package.php?slug=
         String pkgSlug = pathSegmentAfter(path, "package");
         if (pkgSlug == null || pkgSlug.isEmpty()) {
